@@ -1,0 +1,184 @@
+name: Dependabot Simulation
+description: Simulate Dependabot updates to see what would be updated
+author: Festum Qin <festum@g.pl>
+
+inputs:
+  dependabot-config-path:
+    description: Path to dependabot.yml file
+    required: false
+    default: .github/dependabot.yml
+
+outputs:
+  summary:
+    description: Summary of Dependabot simulation results
+    value: ${{ steps.generate-summary.outputs.summary }}
+
+runs:
+  using: composite
+  steps:
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+
+    - name: Install yaml parser
+      run: npm install yaml
+      shell: bash
+
+    - name: Setup Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.21'
+
+    - name: Install Dependabot CLI
+      run: go install github.com/dependabot/cli/cmd/dependabot@latest
+      shell: bash
+
+    - name: Verify dependabot.yml exists
+      run: |
+        if [ ! -f "${{ inputs.dependabot-config-path }}" ]; then
+          echo "Error: dependabot.yml not found at ${{ inputs.dependabot-config-path }}"
+          exit 1
+        fi
+      shell: bash
+
+    - name: Convert dependabot.yml to CLI format
+      run: |
+        node << 'EOF'
+        const fs = require('fs');
+        const yaml = require('yaml');
+
+        const configPath = '${{ inputs.dependabot-config-path }}';
+        const config = yaml.parse(fs.readFileSync(configPath, 'utf8'));
+
+        for (const update of config.updates) {
+          const pm = update['package-ecosystem'];
+          const dir = update.directory || '/';
+
+          const job = {
+            job: {
+              'package-manager': pm,
+              'allowed-updates': [{ 'update-type': 'all' }],
+              source: {
+                provider: 'github',
+                repo: '${{ github.repository }}',
+                directory: dir
+              }
+            }
+          };
+
+          // Add ignore conditions
+          if (update.ignore) {
+            job.job['ignore-conditions'] = update.ignore.map(i => ({
+              'dependency-name': i['dependency-name'],
+              'update-types': i['update-types']
+            }));
+          }
+
+          // Add dependency groups
+          if (update.groups) {
+            job.job['dependency-groups'] = Object.entries(update.groups).map(([name, cfg]) => ({
+              name,
+              rules: { patterns: cfg.patterns || ['*'] }
+            }));
+          }
+
+          const filename = `job-${pm}.yml`;
+          fs.writeFileSync(filename, yaml.stringify(job));
+          console.log(`Created ${filename} for ${pm} in ${dir}`);
+        }
+        EOF
+      shell: bash
+
+    - name: Run simulations
+      run: |
+        for f in job-*.yml; do
+          pm="${f#job-}"
+          pm="${pm%.yml}"
+          echo "=== Simulating $pm ==="
+          cat "$f"
+          echo "---"
+          dependabot update -f "$f" --local . -o "output-$pm.yml" || true
+        done
+      shell: bash
+      continue-on-error: true
+
+    - name: Show results
+      id: generate-summary
+      run: |
+        node << 'EOF'
+        const fs = require('fs');
+        const yaml = require('yaml');
+        const files = fs.readdirSync('.').filter(f => f.startsWith('output-') && f.endsWith('.yml'));
+
+        console.log('## Packages that would be updated\n');
+
+        let summary = '## Dependabot Simulation Results\n\n';
+
+        for (const file of files) {
+          const pm = file.replace('output-', '').replace('.yml', '');
+          console.log(`### ${pm}\n`);
+          summary += `### ${pm}\n\n`;
+
+          try {
+            const content = fs.readFileSync(file, 'utf8');
+            if (!content.trim()) {
+              console.log('No output file\n');
+              summary += 'No output file\n\n';
+              continue;
+            }
+
+            const data = yaml.parse(content);
+            const updates = new Map();
+
+            const output = data?.output || [];
+            for (const item of output) {
+              if (item?.type === 'create_pull_request' && item?.expect?.data?.dependencies) {
+                for (const dep of item.expect.data.dependencies) {
+                  const key = dep.name;
+                  const prev = dep['previous-version'] || '?';
+                  const next = dep.version || '?';
+                  updates.set(key, `${prev} → ${next}`);
+                }
+              }
+            }
+
+            if (updates.size === 0) {
+              console.log('No updates found\n');
+              summary += 'No updates found\n\n';
+            } else {
+              for (const [name, ver] of updates) {
+                const line = `- ${name}: ${ver}`;
+                console.log(line);
+                summary += line + '\n';
+              }
+              summary += '\n';
+            }
+          } catch (e) {
+            console.log(`Parse error: ${e.message}\n`);
+            summary += `Parse error: ${e.message}\n\n`;
+          }
+        }
+
+        // Export summary for output using heredoc syntax for multi-line values
+        const delimiter = 'EOF_SUMMARY';
+        fs.appendFileSync(process.env.GITHUB_OUTPUT, `summary<<${delimiter}\n${summary}\n${delimiter}\n`);
+        EOF
+      shell: bash
+
+    - name: Upload job files
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: dependabot-job-files
+        path: job-*.yml
+        retention-days: 7
+
+    - name: Upload output files
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: dependabot-output-files
+        path: output-*.yml
+        retention-days: 7
+

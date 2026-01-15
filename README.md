@@ -1,6 +1,6 @@
 # dependabot-sim
 
-Reusable GitHub Actions workflow for testing Dependabot configurations locally.
+GitHub Action for simulating Dependabot updates locally.
 
 ## Features
 
@@ -14,7 +14,7 @@ Reusable GitHub Actions workflow for testing Dependabot configurations locally.
 
 ### Basic Usage
 
-Add this workflow to your repository at `.github/workflows/test-dependabot.yml`:
+Add this to your workflow at `.github/workflows/test-dependabot.yml`:
 
 ```yaml
 name: Test Dependabot Configuration
@@ -29,8 +29,11 @@ on:
   workflow_dispatch:
 
 jobs:
-  test:
-    uses: festum/dependabot-sim/.github/workflows/dependabot-test.yml@v1
+  simulate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: festum/dependabot-sim@v1
 ```
 
 ### Custom Dependabot Config Path
@@ -38,9 +41,9 @@ jobs:
 If your dependabot.yml is in a non-standard location:
 
 ```yaml
-jobs:
-  test:
-    uses: festum/dependabot-sim/.github/workflows/dependabot-test.yml@v1
+steps:
+  - uses: actions/checkout@v6
+  - uses: festum/dependabot-sim@v1
     with:
       dependabot-config-path: '.github/custom-dependabot.yml'
 ```
@@ -49,43 +52,43 @@ jobs:
 
 ```yaml
 jobs:
-  test:
-    uses: festum/dependabot-sim/.github/workflows/dependabot-test.yml@v1
-
-  show-results:
-    needs: test
+  simulate:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v6
+
+      - uses: festum/dependabot-sim@v1
+        id: dependabot
+
       - name: Display summary
         run: |
-          echo "${{ needs.test.outputs.result-summary }}"
+          echo "${{ steps.dependabot.outputs.summary }}"
 ```
 
 ## Inputs
 
 | Name | Description | Default | Required |
 |------|-------------|---------|----------|
-| `dependabot-config-path` | Path to dependabot.yml file | `'.github/dependabot.yml'` | No |
+| `dependabot-config-path` | Path to dependabot.yml file | `.github/dependabot.yml` | No |
 
 ## Outputs
 
 | Name | Description |
 |------|-------------|
-| `result-summary` | Summary of Dependabot test results |
+| `summary` | Summary of Dependabot simulation results |
 
 ## How It Works
 
-1. Checks out your repository
-2. Sets up Node.js 20 and Go 1.21 (fixed versions managed in this repo)
-3. Reads your `.github/dependabot.yml` configuration
-4. Converts the configuration to Dependabot CLI format
-5. Runs Dependabot CLI simulations for each package ecosystem
-6. Parses the output and displays which packages would be updated
-7. Uploads job files and output files as artifacts
+1. Sets up Node.js 20 and Go 1.21
+2. Reads your `.github/dependabot.yml` configuration
+3. Converts the configuration to Dependabot CLI format
+4. Runs Dependabot CLI simulations for each package ecosystem
+5. Parses the output and displays which packages would be updated
+6. Uploads job files and output files as artifacts
 
 ## Example Output
 
-```
+```log
 ## Packages that would be updated
 
 ### npm
@@ -101,14 +104,7 @@ jobs:
 ## Requirements
 
 - Your repository must have a `.github/dependabot.yml` file
-- The workflow requires public repository access (or appropriate permissions for private repos)
-
-## Why Fixed Versions?
-
-Node.js and Go versions are fixed (Node 20, Go 1.21) and managed in the `dependabot-sim` repository itself. This ensures:
-- ✅ No breaking changes propagated to downstream users
-- ✅ Predictable and reliable behavior
-- ✅ Version updates are tested here before affecting your workflows
+- You must checkout your repository before using this action
 
 ## Example Dependabot Configuration
 
@@ -144,7 +140,7 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 ## Credits
 
-This workflow uses the official [Dependabot CLI](https://github.com/dependabot/cli) to simulate updates.
+This action uses the official [Dependabot CLI](https://github.com/dependabot/cli) to simulate updates.
 
 ## Related
 
