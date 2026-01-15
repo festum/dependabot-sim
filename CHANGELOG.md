@@ -1,3 +1,10 @@
+## [1.1.1](https://github.com/festum/dependabot-sim/compare/v1.1.0...v1.1.1) (2026-01-15)
+
+
+### 📦 Refactoring
+
+* convered to action ([a27bf25](https://github.com/festum/dependabot-sim/commit/a27bf253cc2349138b5e15b12b139fc80168accc))
+
 ## [1.1.0](https://github.com/festum/dependabot-sim/compare/v1.0.1...v1.1.0) (2026-01-15)
 
 
