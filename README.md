@@ -7,7 +7,6 @@ Reusable GitHub Actions workflow for testing Dependabot configurations locally.
 - 🔄 Simulates Dependabot updates locally using the Dependabot CLI
 - 📦 Supports all package ecosystems (npm, pip, bundler, go-modules, docker, github-actions, etc.)
 - 🔍 Shows which dependencies would be updated without creating PRs
-- ⚙️ Configurable Node.js and Go versions
 - 📊 Uploads job and output files as artifacts for inspection
 - 🎯 Test your `dependabot.yml` configuration before deploying
 
@@ -34,21 +33,16 @@ jobs:
     uses: festum/dependabot-sim/.github/workflows/dependabot-test.yml@v1
 ```
 
-### Advanced Usage with Custom Inputs
+### Custom Dependabot Config Path
+
+If your dependabot.yml is in a non-standard location:
 
 ```yaml
-name: Test Dependabot Configuration
-
-on:
-  workflow_dispatch:
-
 jobs:
   test:
     uses: festum/dependabot-sim/.github/workflows/dependabot-test.yml@v1
     with:
-      node-version: '20'
-      go-version: '1.21'
-      dependabot-config-path: '.github/dependabot.yml'
+      dependabot-config-path: '.github/custom-dependabot.yml'
 ```
 
 ### Using Outputs
@@ -71,8 +65,6 @@ jobs:
 
 | Name | Description | Default | Required |
 |------|-------------|---------|----------|
-| `node-version` | Node.js version to use | `'20'` | No |
-| `go-version` | Go version to use | `'1.21'` | No |
 | `dependabot-config-path` | Path to dependabot.yml file | `'.github/dependabot.yml'` | No |
 
 ## Outputs
@@ -84,11 +76,12 @@ jobs:
 ## How It Works
 
 1. Checks out your repository
-2. Reads your `.github/dependabot.yml` configuration
-3. Converts the configuration to Dependabot CLI format
-4. Runs Dependabot CLI simulations for each package ecosystem
-5. Parses the output and displays which packages would be updated
-6. Uploads job files and output files as artifacts
+2. Sets up Node.js 20 and Go 1.21 (fixed versions managed in this repo)
+3. Reads your `.github/dependabot.yml` configuration
+4. Converts the configuration to Dependabot CLI format
+5. Runs Dependabot CLI simulations for each package ecosystem
+6. Parses the output and displays which packages would be updated
+7. Uploads job files and output files as artifacts
 
 ## Example Output
 
@@ -109,6 +102,13 @@ jobs:
 
 - Your repository must have a `.github/dependabot.yml` file
 - The workflow requires public repository access (or appropriate permissions for private repos)
+
+## Why Fixed Versions?
+
+Node.js and Go versions are fixed (Node 20, Go 1.21) and managed in the `dependabot-sim` repository itself. This ensures:
+- ✅ No breaking changes propagated to downstream users
+- ✅ Predictable and reliable behavior
+- ✅ Version updates are tested here before affecting your workflows
 
 ## Example Dependabot Configuration
 
