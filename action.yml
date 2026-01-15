@@ -3,7 +3,7 @@ description: Simulate Dependabot updates to see what would be updated
 author: Festum Qin <festum@g.pl>
 branding:
   icon: bar-chart-2
-    color: green
+  color: green
 
 inputs:
   dependabot-config-path:
