@@ -1,3 +1,10 @@
+## [1.1.2](https://github.com/festum/dependabot-sim/compare/v1.1.1...v1.1.2) (2026-01-15)
+
+
+### 🐛 Bug Fixes
+
+* add icon and color ([ac0c22f](https://github.com/festum/dependabot-sim/commit/ac0c22fe80cd15748fc930e8f27226d4ee178696))
+
 ## [1.1.1](https://github.com/festum/dependabot-sim/compare/v1.1.0...v1.1.1) (2026-01-15)
 
 
